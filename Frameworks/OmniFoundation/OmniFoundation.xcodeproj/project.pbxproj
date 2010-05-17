@@ -2826,7 +2826,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "#$PROJECT_DIR/../../Scripts/OmniRunUnitTests\n";
+			shellScript = "\"$PROJECT_DIR\"/../../Scripts/OmniRunUnitTests\n";
 		};
 		3444F47F11921ABF0003AD7F /* Build Strings */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -3663,7 +3663,6 @@
 					"$(value)",
 					/usr/include/libxml2,
 				);
-				INFOPLIST_OTHER_PREPROCESSOR_FLAGS = "-traditional-cpp -C -I \"$PROJECT_DERIVED_FILE_DIR\"";
 			};
 			name = Debug;
 		};
