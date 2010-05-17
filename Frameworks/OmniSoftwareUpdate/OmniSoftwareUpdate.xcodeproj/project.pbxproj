@@ -832,6 +832,7 @@
 			baseConfigurationReference = 4AB8F42D08AD27BF00DBB061 /* Omni-Global-Debug.xcconfig */;
 			buildSettings = {
 				HEADER_SEARCH_PATHS = /usr/include/libxml2;
+				INFOPLIST_OTHER_PREPROCESSOR_FLAGS = "-traditional-cpp -C -I \"$PROJECT_DERIVED_FILE_DIR\"";
 			};
 			name = Debug;
 		};

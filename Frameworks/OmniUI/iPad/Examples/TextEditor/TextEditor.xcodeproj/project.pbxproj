@@ -768,6 +768,7 @@
 			baseConfigurationReference = 342721491194802E00B39788 /* Touch-Application-Debug.xcconfig */;
 			buildSettings = {
 				INFOPLIST_FILE = "Resources/TextEditor-Info.plist";
+				INFOPLIST_OTHER_PREPROCESSOR_FLAGS = "-traditional-cpp -C -I \"$PROJECT_DERIVED_FILE_DIR\"";
 				OMNI_BUNDLE_IDENTIFIER = com.omnigroup.OmniText;
 				PRODUCT_NAME = TextEditor;
 				TARGETED_DEVICE_FAMILY = 2;
@@ -791,6 +792,7 @@
 			baseConfigurationReference = 3427213B1194802E00B39788 /* Omni-Global-Debug.xcconfig */;
 			buildSettings = {
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				INFOPLIST_OTHER_PREPROCESSOR_FLAGS = "-traditional-cpp -C -I \"$PROJECT_DERIVED_FILE_DIR\"";
 			};
 			name = Debug;
 		};
@@ -799,6 +801,7 @@
 			baseConfigurationReference = 3427213C1194802E00B39788 /* Omni-Global-Release.xcconfig */;
 			buildSettings = {
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				INFOPLIST_OTHER_PREPROCESSOR_FLAGS = "-traditional-cpp -C -I \"$PROJECT_DERIVED_FILE_DIR\"";
 			};
 			name = Release;
 		};

@@ -584,6 +584,7 @@
 			baseConfigurationReference = 34DB336F08C62ABA00BC2748 /* Omni-Global-Debug.xcconfig */;
 			buildSettings = {
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				INFOPLIST_OTHER_PREPROCESSOR_FLAGS = "-traditional-cpp -C -I \"$PROJECT_DERIVED_FILE_DIR\"";
 			};
 			name = Debug;
 		};

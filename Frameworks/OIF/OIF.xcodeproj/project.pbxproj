@@ -350,6 +350,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 4A1F65C908B37C9D007C9742 /* Omni-Global-Debug.xcconfig */;
 			buildSettings = {
+				INFOPLIST_OTHER_PREPROCESSOR_FLAGS = "-traditional-cpp -C -I \"$PROJECT_DERIVED_FILE_DIR\"";
 			};
 			name = Debug;
 		};

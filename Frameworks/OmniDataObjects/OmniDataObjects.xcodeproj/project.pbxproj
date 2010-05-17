@@ -969,6 +969,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 34A5E1310D89940F0006DF9F /* Omni-Global-Debug.xcconfig */;
 			buildSettings = {
+				INFOPLIST_OTHER_PREPROCESSOR_FLAGS = "-traditional-cpp -C -I\"$PROJECT_DERIVED_FILE_DIR\"";
 			};
 			name = Debug;
 		};
@@ -976,6 +977,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 34A5E1320D89940F0006DF9F /* Omni-Global-Release.xcconfig */;
 			buildSettings = {
+				INFOPLIST_OTHER_PREPROCESSOR_FLAGS = "-traditional-cpp -C \"-I $PROJECT_DERIVED_FILE_DIR\"";
 			};
 			name = Release;
 		};
@@ -1101,6 +1103,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 34A5E1300D89940F0006DF9F /* Omni-Global-Coverage.xcconfig */;
 			buildSettings = {
+				INFOPLIST_OTHER_PREPROCESSOR_FLAGS = "-traditional-cpp -C -I \"$PROJECT_DERIVED_FILE_DIR\"";
 			};
 			name = Coverage;
 		};

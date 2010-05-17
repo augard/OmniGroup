@@ -10,10 +10,10 @@
 #if !defined(NON_OMNI_BUILD_ENVIRONMENT)
 
 // In the case of the standalone framework, this will be generated from it.  Otherwise from the wrapper iPhone app.
-#import "SVNVersion.h"
+//#import "SVNVersion.h"
 
 RCS_ID("$Id$")
 
-const uint32_t ODOVersionNumber = SVNREVISION;
+const uint32_t ODOVersionNumber = 0;
 
 #endif

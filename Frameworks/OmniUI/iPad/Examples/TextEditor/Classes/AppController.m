@@ -69,4 +69,9 @@ RCS_ID("$Id$")
     return (NSString *)kUTTypeRTF;
 }
 
+- (void) dismissInspectorImmediately
+{
+	
+}
+
 @end
