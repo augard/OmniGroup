@@ -19,8 +19,8 @@
  The leading edge thumb is biased towards the top (its touchable area doesn't do below the selection rect it is associated with) and the trailing edge thumb is biased towards the bottom.
 */
 
-#define THUMB_HALFWIDTH 9      // The radius of the thumb circle (pixels)
-#define THUMB_GAP 3            // The gap between the thumb circle and the caret bar (pixels)
+#define THUMB_HALFWIDTH 7      // The radius of the thumb circle (pixels)
+#define THUMB_GAP 0            // The gap between the thumb circle and the caret bar (pixels)
 #define THUMB_RING_WIDTH 2     // The width of the white border of the thumb circle (pixels)
 
 #define THUMB_TOUCH_RADIUS 25  // How many pixels from the ring should we be sensitive to touches?

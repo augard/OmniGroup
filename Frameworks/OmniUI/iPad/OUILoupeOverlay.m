@@ -201,7 +201,7 @@ RCS_ID("$Id$");
             CGContextClip(ctx);
         }
         
-        if (!subject.opaque) {
+        //if (!subject.opaque) {
             /* Fill with the owner's background before translating. We want it to seem like its background goes on forever, not have a clear bit if we are near the edge. */
             
             UIColor *backgroundColor;
@@ -217,7 +217,7 @@ RCS_ID("$Id$");
             } else {
                 CGContextFillRect(ctx, bounds);
             }
-        }
+        //}
         
         /* We want the touchPoint in the subject view to end up at our loupeTouchPoint point (typically the center of our loupe clip path). */
         

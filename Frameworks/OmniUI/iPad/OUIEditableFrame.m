@@ -293,10 +293,10 @@ static CGFloat leftRunBoundary(CTLineRef line, CTRunRef run)
 }
 
 /* Macros for invoking the callback (usually with a 0 for the trailing whitespace width) */
-#define RECT_tww(start, end, tww, flags) do{ CGFloat start_ = (start); BOOL shouldContinue = (*cb)( (CGPoint){ lineOrigin.x + start_, lineOrigin.y }, (end) - start_, tww, ascent, descent, (flags), ctxt); if (!shouldContinue) return -1; rectsIssued ++; }while(0)
+#define RECT_tww(start, end, tww, flags) do{ CGFloat start_ = (start); BOOL shouldContinue = (*cb)( (CGPoint){ lineOrigin.x + start_, lineOrigin.y }, (end) - start_, tww, ascentOverride, descent, (flags), ctxt); if (!shouldContinue) return -1; rectsIssued ++; }while(0)
 #define RECT(start, end, flags) RECT_tww(start, end, 0, flags)
 
-static unsigned int rectanglesInLine(CTLineRef line, CGPoint lineOrigin, NSRange r, unsigned boundaryFlags, rectanglesInRangeCallback cb, void *ctxt)
+static unsigned int rectanglesInLine(CTLineRef line, CGPoint lineOrigin, CGFloat ascentOverride, NSRange r, unsigned boundaryFlags, rectanglesInRangeCallback cb, void *ctxt)
 {
     CFArrayRef runs = CTLineGetGlyphRuns(line);
     CFIndex runCount = CFArrayGetCount(runs);
@@ -456,6 +456,9 @@ static void rectanglesInRange(CTFrameRef frame, NSRange r, rectanglesInRangeCall
     if (firstLine < 0 || firstLine >= lineCount)
         return;
     
+	CGFloat yPreceedingLine = -1.0f;
+	CGFloat descentPreceedingLine = -1.0f;
+	
     for (CFIndex lineIndex = firstLine; lineIndex < lineCount; lineIndex ++) {
         CTLineRef line = CFArrayGetValueAtIndex(lines, lineIndex);
         CFRange lineRange = CTLineGetStringRange(line);
@@ -499,12 +502,16 @@ static void rectanglesInRange(CTFrameRef frame, NSRange r, rectanglesInRangeCall
         CTFrameGetLineOrigins(frame, (CFRange){ lineIndex, 1 }, lineOrigin);
         
         BOOL keepGoing;
-        
+
+		if (yPreceedingLine > 0) {
+			ascent = yPreceedingLine - lineOrigin[0].y - descentPreceedingLine;
+		}
+		
         if (! (flags & (rectwalker_LeftIsRangeBoundary|rectwalker_RightIsRangeBoundary)) ) {
             CGFloat trailingWhitespace = (flags & rectwalker_RightIsLineWrap)? CTLineGetTrailingWhitespaceWidth(line) : 0;
             keepGoing = (*cb)( (CGPoint){ lineOrigin[0].x + left, lineOrigin[0].y }, right - left, trailingWhitespace, ascent, descent, flags, ctxt);
         } else {
-            int parts = rectanglesInLine(line, lineOrigin[0], r, flags, cb, ctxt);
+            int parts = rectanglesInLine(line, lineOrigin[0], ascent, r, flags, cb, ctxt);
             if (parts < 0)
                 keepGoing = NO;
             else {
@@ -512,6 +519,9 @@ static void rectanglesInRange(CTFrameRef frame, NSRange r, rectanglesInRangeCall
             }
         }
         
+		yPreceedingLine = lineOrigin[0].y;
+		descentPreceedingLine = descent;
+				
         if (!keepGoing || lastLine)
             break;
     }
@@ -891,9 +901,7 @@ static CGRect _textRectForViewRect(OUIEditableFrame *self, CGPoint lastLineOrigi
     
     items[0] = [[UIMenuItem alloc] initWithTitle:@"Style" action:@selector(_inspectSelection:)];
 //    items[1] = [[UIMenuItem alloc] initWithTitle:@"\u00B6" action:@selector(_inspectParagraph:)];
-    
     menuController.menuItems = [NSArray arrayWithObjects:items count:1];
-    
     [items[0] release];
 }
 
@@ -956,6 +964,7 @@ static CGRect _textRectForViewRect(OUIEditableFrame *self, CGPoint lastLineOrigi
 {
     _loupe.mode = OUILoupeOverlayNone;
     [self _setSolidCaret:-1];
+	flags.showingEditMenu = 1;
 }
 
 - (id <NSObject>)attribute:(NSString *)attr inRange:(OUEFTextRange *)r;
@@ -1098,7 +1107,12 @@ static void notifyAfterMutate(OUIEditableFrame *self, SEL _cmd)
 
 - (void)layoutSubviews
 {
-    /* FIXME */ flags.showingEditMenu = ( selection != nil && ![selection isEmpty] );
+	DEBUG_TEXT(@"Selection: %@ and drawnFrame: %d", selection, drawnFrame ? 1 : 0);
+    /* FIXME */ 
+	// What was broken? I modified this to allow the menu to appear on single selections as
+	// well but it shouldn't appear on the first tap, only a delayed tap or a re-tap in the same
+	// location. Always is good for now though.
+	flags.showingEditMenu = flags.showingEditMenu && ( selection != nil && (drawnFrame && !flags.textNeedsUpdate) /*![selection isEmpty]*/ );
     
     [super layoutSubviews];
     if (flags.selectionNeedsUpdate && !flags.textNeedsUpdate)
@@ -1177,12 +1191,16 @@ static void notifyAfterMutate(OUIEditableFrame *self, SEL _cmd)
     BOOL suppressContextMenu = (_loupe != nil && _loupe.mode != OUILoupeOverlayNone) ||
                                (_textInspector != nil && _textInspector.isVisible);
     if (!flags.showingEditMenu || suppressContextMenu) {
+		DEBUG_TEXT(@"Hide COntext Menu");
+
         if (_selectionContextMenu) {
             [_selectionContextMenu setMenuVisible:NO animated:( suppressContextMenu? NO : YES )];
             [_selectionContextMenu autorelease];
             _selectionContextMenu = nil;
         }
     } else {
+		DEBUG_TEXT(@"Setup context menu");
+
         BOOL alreadyVisible;
         if (!_selectionContextMenu) {
             UIMenuController *menuController = [UIMenuController sharedMenuController];
@@ -1193,21 +1211,33 @@ static void notifyAfterMutate(OUIEditableFrame *self, SEL _cmd)
             alreadyVisible = [_selectionContextMenu isMenuVisible];
         }
         
+		
+		DEBUG_TEXT(@"Context menu visible? %@: %@", alreadyVisible ? @"YES" : @"NO", [UIMenuController sharedMenuController].menuItems );
+
         /* Get the bounding rect of our selection */
         CGRect selectionRectangle = [self _boundsOfRange:selection];
-        
-        /* Shift from layout coordinates to rendering coordinates */
-        selectionRectangle.origin.x += layoutOrigin.x;
-        selectionRectangle.origin.y += layoutOrigin.y;
-        
-        /* Shift from rendering coordinates to view/bounds coordinates */
-        selectionRectangle = [self convertRectToRenderingSpace:selectionRectangle]; // note method is confusingly named
-        selectionRectangle = CGRectIntegral(selectionRectangle);
-        
+        DEBUG_TEXT(@"Selection Rectangle PRE: %f,%f,%f,%f", selectionRectangle.origin.x, selectionRectangle.origin.y, selectionRectangle.size.width, selectionRectangle.size.height);
+
+		// The _boundsOfRange returns a different coordinate ssytem for an empty selection.
+		// I haven't traced through to see how it affects other areas so for now
+		// we just won't adjust if it's an empty selection.
+		// This allows the menu to appear on a single caret as well.
+		if (![selection isEmpty]) {
+			/* Shift from layout coordinates to rendering coordinates */
+			selectionRectangle.origin.x += layoutOrigin.x;
+			selectionRectangle.origin.y += layoutOrigin.y;
+		}
+		
+		/* Shift from rendering coordinates to view/bounds coordinates */
+		selectionRectangle = [self convertRectToRenderingSpace:selectionRectangle]; // note method is confusingly named
+		selectionRectangle = CGRectIntegral(selectionRectangle);
+
+		DEBUG_TEXT(@"Selection Rectangle POST: %f,%f,%f,%f", selectionRectangle.origin.x, selectionRectangle.origin.y, selectionRectangle.size.width, selectionRectangle.size.height);
+
         [_selectionContextMenu setTargetRect:selectionRectangle inView:self];
         
         if (!alreadyVisible) {
-            DEBUG_TEXT(@"Showing context menu");
+            DEBUG_TEXT(@"Context menu wasn't visible. Show it.");
             [_selectionContextMenu setMenuVisible:YES animated:YES];
         }
     }
@@ -1314,7 +1344,6 @@ static void notifyAfterMutate(OUIEditableFrame *self, SEL _cmd)
         UILongPressGestureRecognizer *inspectTap = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(_inspectTap:)];
         actionRecognizers[2] = inspectTap;
         [self addGestureRecognizer:inspectTap];
-        
         
         assert(3 == EF_NUM_ACTION_RECOGNIZERS);
     }
@@ -2687,13 +2716,41 @@ CGPoint closestPointInLine(CTLineRef line, CGPoint lineOrigin, CGPoint test, NSR
 - (void)_activeTap:(UITapGestureRecognizer *)r;
 {
     DEBUG_TEXT(@" -> %@", r);
+
+	// Hide the menu if it's visible.
+	flags.showingEditMenu = 0;
+	
     CGPoint p = [r locationInView:self];
     OUEFTextPosition *pp = (OUEFTextPosition *)[self closestPositionToPoint:p];
+	
+    DEBUG_TEXT(@"active with state %d at %@ with required taps %d, number of touches %d", r.state, pp, [r numberOfTapsRequired], [r numberOfTouches]);
+
     if (pp) {
         if (r.numberOfTapsRequired > 1 && selection) {
-            [self setSelectedTextRange:[[self tokenizer] rangeEnclosingPosition:selection.start withGranularity:UITextGranularityWord inDirection:UITextStorageDirectionForward]];
+			UITextRange *r = [[self tokenizer] rangeEnclosingPosition:selection.start withGranularity:UITextGranularityWord inDirection:UITextStorageDirectionForward];
+			if (r == nil) {
+				r = [[self tokenizer] rangeEnclosingPosition:selection.start withGranularity:UITextGranularityWord inDirection:UITextStorageDirectionBackward];
+			}
+            [self setSelectedTextRange:r];
+			flags.showingEditMenu = 1;
         } else {
-            OUEFTextRange *newSelection = [[OUEFTextRange alloc] initWithStart:pp end:pp];
+			// UITextView selects beginning and end of word only on single tap.
+			int idx = pp.index;
+			OUEFTextRange *word = (OUEFTextRange *)[[self tokenizer] rangeEnclosingPosition:pp withGranularity:UITextGranularityWord inDirection:UITextStorageDirectionForward];
+			if (word) {
+				int start = [(OUEFTextPosition *)word.start index];
+				int end = [(OUEFTextPosition *)word.end index];
+				idx = (idx <= start + ( ( end - start ) / 2 )) ? start : end;
+			}
+			OUEFTextRange *newSelection = [[OUEFTextRange alloc] initWithRange:NSMakeRange(idx, 0) generation:generation];
+			
+			int selStart = [(OUEFTextPosition *)selection.start index];
+			int selEnd = [(OUEFTextPosition *)selection.end index];
+			if (selStart == idx && selEnd == idx ) {
+				// Show the edit menu if we're re-tapping in the same location.
+				flags.showingEditMenu = 1;
+			} 
+			
             [self setSelectedTextRange:newSelection];
             [newSelection release];
         }
@@ -2708,7 +2765,7 @@ CGPoint closestPointInLine(CTLineRef line, CGPoint lineOrigin, CGPoint test, NSR
     CGPoint touchPoint = [r locationInView:self];
     OUEFTextPosition *pp = (OUEFTextPosition *)[self closestPositionToPoint:touchPoint];
     
-    //NSLog(@"inspect with state %d at %@", r.state, pp);
+    DEBUG_TEXT(@"inspect with state %d at %@ with required taps %d, number of touches %d", r.state, pp, [r numberOfTapsRequired], [r numberOfTouches]);
     
     UIGestureRecognizerState state = r.state;
     
@@ -2753,6 +2810,7 @@ CGPoint closestPointInLine(CTLineRef line, CGPoint lineOrigin, CGPoint test, NSR
     if (state == UIGestureRecognizerStateEnded || state == UIGestureRecognizerStateCancelled) {
         _loupe.mode = OUILoupeOverlayNone;
         [self _setSolidCaret:-1];
+		flags.showingEditMenu = 1;
         return;
     }
 }
@@ -2820,7 +2878,7 @@ static BOOL addRectsToPath(CGPoint p, CGFloat width, CGFloat trailingWS, CGFloat
     
     CGContextAddRect(r->ctxt, highlightRect);
     
-    // NSLog(@"Adding rect(me) -> %@ (raw %@)", NSStringFromCGRect(highlightRect), NSStringFromCGPoint(p));
+    DEBUG_TEXT(@"Adding rect(me) -> %@ (raw %@)", NSStringFromCGRect(highlightRect), NSStringFromCGPoint(p));
     
     return YES;
 }
@@ -2858,11 +2916,14 @@ static BOOL addRectsToPath(CGPoint p, CGFloat width, CGFloat trailingWS, CGFloat
         CGContextFillPath(ctx);
 
     
-        CGContextBeginPath(ctx);
+		// This double highlihgts the actual word rects. Don't like it so we'll turn in off for now.
+        /*
+		CGContextBeginPath(ctx);
         ctxt.leftEdge = 1e10;
         ctxt.rightEdge = -1e10;
         rectanglesInRange(drawnFrame, selectionRange, addRectsToPath, &ctxt);
         CGContextFillPath(ctx);
+		*/
     }
 }
 
