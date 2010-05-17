@@ -26,6 +26,7 @@
     /* Note that '_content' contains an additional trailing newline which we hide from people who read/write our attributedText property */
     NSMutableAttributedString *_content;
     OUEFTextRange *selection;
+    OUEFTextRange *_selectionMinimum; // Minimum selection fro drag interactions.
     NSUInteger generation;
     NSDictionary *typingAttributes;
     NSRange markedRange;
@@ -63,6 +64,7 @@
         unsigned showSelectionThumbs: 1;
         unsigned solidCaret: 1;
         unsigned showingEditMenu: 1;
+		unsigned doubleTapInspectSelection: 1;
     } flags;
     
     // Range selection adjustment and display

@@ -693,6 +693,7 @@ static void getTypographicPosition(CFArrayRef lines, NSUInteger posIndex, int af
     [textColor release];
     [_content release];
     [selection release];
+    [_selectionMinimum release];
     [typingAttributes release];
     [_insertionPointSelectionColor release];
     [markedTextStyle release];
@@ -2727,6 +2728,9 @@ CGPoint closestPointInLine(CTLineRef line, CGPoint lineOrigin, CGPoint test, NSR
 	// Hide the menu if it's visible.
 	flags.showingEditMenu = 0;
 	
+	[OUIEditableFrame cancelPreviousPerformRequestsWithTarget:self selector:@selector(_disableDoubleTapInspectSelection) object:nil];
+	flags.doubleTapInspectSelection = 1;
+	
     CGPoint p = [r locationInView:self];
     OUEFTextPosition *pp = (OUEFTextPosition *)[self closestPositionToPoint:p];
 	
@@ -2760,10 +2764,20 @@ CGPoint closestPointInLine(CTLineRef line, CGPoint lineOrigin, CGPoint test, NSR
 			
             [self setSelectedTextRange:newSelection];
             [newSelection release];
+			
+			flags.doubleTapInspectSelection = 1;
+			// Start a delayed selector to modify the double tap inspection action. 
+			// TODO: The delay on the selector should be slighty longer than the delay between double taps.  
+			[self performSelector:@selector(_disableDoubleTapInspectSelection) withObject:nil afterDelay: 1.0];
+
         }
     }
     
     [self _setSolidCaret:0];
+}
+
+- (void)_disableDoubleTapInspectSelection {
+	flags.doubleTapInspectSelection = 0;
 }
 
 /* Press-and-hold calls this */
@@ -2783,26 +2797,59 @@ CGPoint closestPointInLine(CTLineRef line, CGPoint lineOrigin, CGPoint test, NSR
             [[[[self window] subviews] lastObject] addSubview:_loupe];
        }
 
-        [self _setSolidCaret:1];
+		if (flags.doubleTapInspectSelection) {
+			UITextRange *r = [[self tokenizer] rangeEnclosingPosition:selection.start withGranularity:UITextGranularityWord inDirection:UITextStorageDirectionForward];
+			if (r == nil) {
+				r = [[self tokenizer] rangeEnclosingPosition:selection.start withGranularity:UITextGranularityWord inDirection:UITextStorageDirectionBackward];
+			}
+            [self setSelectedTextRange:r];
+			// Keep the word as a minimum selection range for the drag interactions on double-tap-hold
+			[_selectionMinimum release];
+			_selectionMinimum = [r retain];
+        } else {
+			[self _setSolidCaret:1];
+		}
     }
     
     // We want to update the loupe's touch point before the mode, so that when it's brought on screen it doesn't animate distractingly out from some other location.
     _loupe.touchPoint = touchPoint;
     
     if (state == UIGestureRecognizerStateChanged) {
-        UITextRange *newSelection = nil;
-        
-        /* This by-word selection is only a rough approximation to the by-word selection that UITextView does */
-        if ([r numberOfTapsRequired] > 1)
-            newSelection = [[self tokenizer] rangeEnclosingPosition:pp withGranularity:UITextGranularityWord inDirection:UITextStorageDirectionForward];
-        
-        if (newSelection) {
-            [self setSelectedTextRange:newSelection];
-        } else {
-            newSelection = [[OUEFTextRange alloc] initWithStart:pp end:pp];
-            [self setSelectedTextRange:newSelection];
-            [newSelection release];
-        }
+        if (selection && [selection isEmpty]) {
+			UITextRange *newSelection = nil;
+			
+			/* This by-word selection is only a rough approximation to the by-word selection that UITextView does */
+			if ([r numberOfTapsRequired] > 1)
+				newSelection = [[self tokenizer] rangeEnclosingPosition:pp withGranularity:UITextGranularityWord inDirection:UITextStorageDirectionForward];
+			
+			if (newSelection) {
+				[self setSelectedTextRange:newSelection];
+			} else {
+				newSelection = [[OUEFTextRange alloc] initWithStart:pp end:pp];
+				[self setSelectedTextRange:newSelection];
+				[newSelection release];
+			}
+		} else if (selection && _selectionMinimum) {
+			//Fake the thumb drag by adjusting the range.
+			// Double tap selection and drag maintains at least the word as the selection.
+			// and doesn't care about which handle is dragged.
+			OUEFTextPosition *start = (OUEFTextPosition *)[_selectionMinimum start];
+			OUEFTextPosition *end = (OUEFTextPosition *)[_selectionMinimum end];
+
+			if ([self comparePosition:pp toPosition:start] == NSOrderedAscending) {
+				// pos < start
+				start = pp;
+				//[self thumbMoved:startThumb targetPosition:touchPoint];
+			} else if ([self comparePosition:pp toPosition:end] == NSOrderedDescending) {
+				// pos > end
+				end = pp;
+				//[self thumbMoved:endThumb targetPosition:touchPoint];
+			}
+			
+			OUEFTextRange *range = [[OUEFTextRange alloc] initWithRange:NSMakeRange([start index], [end index] - [start index]) generation:generation];
+			[self setSelectedTextRange:range];
+			[range release];
+		}
     }
     
     /* UITextView has two selection inspecting/altering modes: caret and range. If you have a caret, you get a round selection inspection that just alters the inspection point. If you have a range, then the end of the range that your tap is closest to is altered and a rectangular selection inspector is shown. */
@@ -2814,6 +2861,8 @@ CGPoint closestPointInLine(CTLineRef line, CGPoint lineOrigin, CGPoint test, NSR
     } else
         _loupe.mode = OUILoupeOverlayNone;
     
+	flags.doubleTapInspectSelection = 0;
+	
     if (state == UIGestureRecognizerStateEnded || state == UIGestureRecognizerStateCancelled) {
         _loupe.mode = OUILoupeOverlayNone;
         [self _setSolidCaret:-1];
