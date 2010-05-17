@@ -14,6 +14,7 @@
 @optional
 
 - (void)textViewContentsChanged:(OUIEditableFrame *)textView;
+- (void)textView:(OUIEditableFrame *)textView didChangeTextInRange:(NSRange)range replacementText:(NSString *)text;
 - (void)textViewLayoutChanged:(OUIEditableFrame *)textView;
 - (void)textViewDidEndEditing:(OUIEditableFrame *)textView;
 

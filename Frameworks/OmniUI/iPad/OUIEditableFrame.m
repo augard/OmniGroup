@@ -33,7 +33,7 @@
 
 RCS_ID("$Id$");
 
-#if 0 && defined(DEBUG)
+#if 1 && defined(DEBUG)
     #define DEBUG_TEXT(format, ...) NSLog(@"TEXT: " format, ## __VA_ARGS__)
 #else
     #define DEBUG_TEXT(format, ...)
@@ -111,6 +111,8 @@ static void btrace(void)
 @end
 
 @implementation OUIEditableFrame
+
+@synthesize content = _content;
 
 static id do_init(OUIEditableFrame *self)
 {
@@ -858,6 +860,7 @@ static CGRect _textRectForViewRect(OUIEditableFrame *self, CGPoint lastLineOrigi
     
     flags.delegateRespondsToLayoutChanged = ( newDelegate && [newDelegate respondsToSelector:@selector(textViewLayoutChanged:)] )? 1 : 0;
     flags.delegateRespondsToContentsChanged = ( newDelegate && [newDelegate respondsToSelector:@selector(textViewContentsChanged:)] )? 1 : 0;
+	flags.delegateRespondsToContentsChangedInRange = ( newDelegate && [newDelegate respondsToSelector:@selector(textView:didChangeTextInRange:replacementText:)] )? 1 : 0;
 }
 
 @synthesize delegate;
@@ -1116,7 +1119,8 @@ static void notifyAfterMutate(OUIEditableFrame *self, SEL _cmd)
     
     [super layoutSubviews];
     if (flags.selectionNeedsUpdate && !flags.textNeedsUpdate)
-        [self setNeedsDisplay];
+		flags.selectionNeedsUpdate = NO;
+	//    [self setNeedsDisplay];
 
     // NSLog(@"Laying out: solidCaret = %u", flags.solidCaret);
     
@@ -1590,7 +1594,7 @@ static void notifyAfterMutate(OUIEditableFrame *self, SEL _cmd)
         [delegate textViewContentsChanged:self];
      */
     
-    [self setNeedsDisplay];
+    //[self setNeedsDisplay];
 }
 
 #pragma mark -
@@ -1720,7 +1724,10 @@ enum {
     [self _setSelectionToIndex: ( replaceRange.location + [text length] )];
     notifyAfterMutate(self, _cmd);
     
-    [self setNeedsDisplay];
+	if (flags.delegateRespondsToContentsChangedInRange) {
+		[delegate textView: self didChangeTextInRange: replaceRange replacementText: text];
+	}
+    //[self setNeedsDisplay];
 }
 
 - (void)deleteBackward;
@@ -1753,7 +1760,7 @@ enum {
         afterMutate(self, _cmd);
         [self _setSelectionToIndex:cr.location];
         notifyAfterMutate(self, _cmd);
-        [self setNeedsDisplay];
+        //[self setNeedsDisplay];
     }
 }
 
@@ -1870,8 +1877,8 @@ enum {
     afterMutate(self, _cmd);
     [self _setSelectionToIndex:endex];
     notifyAfterMutate(self, _cmd);
-    
-    [self setNeedsDisplay];
+	
+    //[self setNeedsDisplay];
 }
 
 - (UITextRange *)selectedTextRange

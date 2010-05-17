@@ -59,6 +59,7 @@
         unsigned selectionNeedsUpdate: 1;
         unsigned delegateRespondsToLayoutChanged: 1;
         unsigned delegateRespondsToContentsChanged: 1;
+		unsigned delegateRespondsToContentsChangedInRange: 1;
         unsigned showSelectionThumbs: 1;
         unsigned solidCaret: 1;
         unsigned showingEditMenu: 1;
@@ -101,6 +102,8 @@
 @property (nonatomic) BOOL autoCorrectDoubleSpaceToPeriodAtSentenceEnd;
 @property (nonatomic) UITextAutocorrectionType autocorrectionType;  // defaults to UITextAutocorrectionTypeNo
 @property (nonatomic) UITextAutocapitalizationType autocapitalizationType; // defaults to UITextAutocapitalizationTypeNone
+
+@property (nonatomic, retain) NSMutableAttributedString *content;
 
 - (UITextRange *)selectedTextRange;
 - (void)setSelectedTextRange:(UITextRange *)newRange;
