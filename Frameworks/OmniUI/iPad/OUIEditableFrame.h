@@ -44,6 +44,7 @@
     CGSize layoutSize;
     UIEdgeInsets textInset;
     UIKeyboardType keyboardType;
+    UITextGranularity tapSelectionGranularity;
     BOOL _autoCorrectDoubleSpaceToPeriodAtSentenceEnd;
     UITextAutocorrectionType _autocorrectionType;
     UITextAutocapitalizationType _autocapitalizationType;
